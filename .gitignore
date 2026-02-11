@@ -5,3 +5,4 @@ data/
 mlruns/
 model.pt
 *.zip
+model.pt

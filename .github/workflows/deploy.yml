@@ -1,0 +1,66 @@
+name: CI-CD Train Build Push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  train-build-push:
+    runs-on: ubuntu-latest
+
+    env:
+      KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+      KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install kaggle
+
+      - name: Download dataset from Kaggle
+        run: |
+          mkdir -p data/raw
+          kaggle datasets download -d salader/dogs-vs-cats -p data/raw --unzip
+
+      - name: Clean corrupted images
+        run: |
+          python src/clean_data.py
+
+      - name: Train model
+        run: |
+          python -m src.train
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | \
+          docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+      - name: Build Docker image
+        run: docker build -t cats-dogs-api .
+
+      - name: Tag Docker image
+        run: |
+          docker tag cats-dogs-api:latest \
+          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cats-dogs-api:latest
+
+      - name: Push Docker image
+        run: |
+          docker push \
+          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cats-dogs-api:latest
