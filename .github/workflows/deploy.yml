@@ -1,4 +1,4 @@
-name: train-build-push
+name: train
 
 on:
   push:
@@ -22,22 +22,21 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install kaggle
 
-    - name: Download dataset from Kaggle
-      env:
-        KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
-        KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Download dataset from S3
       run: |
-        mkdir -p ~/.kaggle
-        echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
-        chmod 600 ~/.kaggle/kaggle.json
-        kaggle datasets download -d microsoft/cats-vs-dogs -p data/raw --unzip
+        mkdir -p data/raw
+        aws s3 cp s3://cats-dogs-mlops-bucket/data/raw/PetImages data/raw/PetImages --recursive
 
     - name: Clean corrupted images
-      run: |
-        python src/clean_data.py
+      run: python src/clean_data.py
 
     - name: Train model
-      run: |
-        python -m src.train
+      run: python -m src.train
