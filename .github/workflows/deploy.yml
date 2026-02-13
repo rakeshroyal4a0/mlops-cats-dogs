@@ -61,8 +61,11 @@ jobs:
     # TRAIN MODEL
     # -------------------------
 
-    - name: Train model
-      run: python src/train.py
+    - - name: Train model
+      run: |
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
+        python src/train.py
+
 
     # -------------------------
     # DOCKER BUILD + PUSH
