@@ -13,7 +13,7 @@ from PIL import Image
 DATA_DIR = "data/raw"
 MODEL_SAVE_PATH = "model.pth"
 BATCH_SIZE = 32
-EPOCHS = 2
+EPOCHS = 1
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print("Using device:", DEVICE)

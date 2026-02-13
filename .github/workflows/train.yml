@@ -67,19 +67,8 @@ jobs:
         python src/train.py
 
 
-    # -------------------------
-    # DOCKER BUILD + PUSH
-    # -------------------------
-
-    - name: Login to Amazon ECR
-      run: |
-        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
-
-    - name: Build Docker image
-      run: docker build -t cats-dogs-app .
-
-    - name: Tag Docker image
-      run: docker tag cats-dogs-app:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/cats-dogs-app:latest
-
-    - name: Push Docker image
-      run: docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/cats-dogs-app:latest
+    - name: Upload trained model
+      uses: actions/upload-artifact@v4
+      with:
+        name: trained-model
+        path: model.pth
