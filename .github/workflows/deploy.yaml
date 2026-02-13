@@ -49,7 +49,7 @@ jobs:
 
       - name: Push Docker image
         run: |
-          docker push \
-          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/catsanddogs :latest
+            docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/catsanddogs:latest
+
 # trigger
 
