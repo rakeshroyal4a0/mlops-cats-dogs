@@ -34,7 +34,10 @@ jobs:
       run: |
         mkdir -p data/raw
         aws s3 cp s3://cats-dogs-mlops-bucket/data/raw/PetImages data/raw/PetImages --recursive
-
+    - name: Debug folder structure
+      run: |
+        echo "Listing data folder"
+        ls -R data || true
     - name: Clean corrupted images
       run: python src/clean_data.py
 
