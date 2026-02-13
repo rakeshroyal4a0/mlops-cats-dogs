@@ -41,7 +41,7 @@ jobs:
       - name: Tag Docker image
         run: |
           docker tag cats-dogs-app:latest \
-          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/cats-dogs-app:latest
+          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/catsanddogs:latest
 
       # -------------------------
       # PUSH IMAGE
@@ -50,5 +50,6 @@ jobs:
       - name: Push Docker image
         run: |
           docker push \
-          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/catsanddogs:latest
+          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/catsanddogs :latest
 # trigger
+
