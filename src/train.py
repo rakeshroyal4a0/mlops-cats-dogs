@@ -1,105 +1,125 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import mlflow
-import mlflow.pytorch
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-from sklearn.metrics import confusion_matrix, accuracy_score
+from torchvision import datasets, transforms, models
+from torch.utils.data import DataLoader
+from PIL import Image
 
-from src.model import SimpleCNN
-from src.preprocess import get_dataloaders
+# ----------------------------
+# 1️⃣ CONFIG
+# ----------------------------
 
-EPOCHS = 3
-LR = 0.001
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DATA_DIR = "data/raw"
+MODEL_SAVE_PATH = "model.pth"
+BATCH_SIZE = 32
+EPOCHS = 2
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def train():
+print("Using device:", DEVICE)
 
-    mlflow.start_run()
+# ----------------------------
+# 2️⃣ FIND PetImages FOLDER AUTOMATICALLY
+# ----------------------------
 
-    train_loader, val_loader, test_loader = get_dataloaders()
+pet_images_path = None
 
-    model = SimpleCNN().to(DEVICE)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=LR)
+for root, dirs, files in os.walk(DATA_DIR):
+    if "PetImages" in dirs:
+        pet_images_path = os.path.join(root, "PetImages")
+        break
 
-    mlflow.log_param("epochs", EPOCHS)
-    mlflow.log_param("learning_rate", LR)
+if pet_images_path is None:
+    raise Exception("❌ PetImages folder not found inside data/raw")
 
-    train_losses = []
-    val_accuracies = []
+print("✅ Dataset found at:", pet_images_path)
 
-    for epoch in range(EPOCHS):
+# ----------------------------
+# 3️⃣ CLEAN CORRUPTED IMAGES
+# ----------------------------
 
-        # ---- Training ----
-        model.train()
-        running_loss = 0.0
+for category in ["Cat", "Dog"]:
+    folder_path = os.path.join(pet_images_path, category)
 
-        for images, labels in train_loader:
-            images, labels = images.to(DEVICE), labels.to(DEVICE)
+    if not os.path.exists(folder_path):
+        continue
 
-            optimizer.zero_grad()
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+    for file in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, file)
+        try:
+            img = Image.open(file_path)
+            img.verify()
+        except Exception:
+            print("Removing corrupted file:", file_path)
+            os.remove(file_path)
 
-            running_loss += loss.item()
+print("✅ Data cleaning completed")
 
-        avg_loss = running_loss / len(train_loader)
-        train_losses.append(avg_loss)
+# ----------------------------
+# 4️⃣ TRANSFORMS
+# ----------------------------
 
-        # ---- Validation ----
-        model.eval()
-        all_preds = []
-        all_labels = []
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+])
 
-        with torch.no_grad():
-            for images, labels in val_loader:
-                images = images.to(DEVICE)
-                outputs = model(images)
-                _, preds = torch.max(outputs, 1)
+# ----------------------------
+# 5️⃣ LOAD DATASET
+# ----------------------------
 
-                all_preds.extend(preds.cpu().numpy())
-                all_labels.extend(labels.numpy())
+dataset = datasets.ImageFolder(pet_images_path, transform=transform)
+dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-        val_acc = accuracy_score(all_labels, all_preds)
-        val_accuracies.append(val_acc)
+print("✅ Dataset loaded")
+print("Classes:", dataset.classes)
 
-        print(f"Epoch {epoch+1}, Loss: {avg_loss:.4f}, Val Acc: {val_acc:.4f}")
+# ----------------------------
+# 6️⃣ LOAD PRETRAINED MODEL
+# ----------------------------
 
-        mlflow.log_metric("train_loss", avg_loss, step=epoch)
-        mlflow.log_metric("val_accuracy", val_acc, step=epoch)
+model = models.resnet18(pretrained=True)
 
-    # ---- Confusion Matrix ----
-    cm = confusion_matrix(all_labels, all_preds)
+# Modify final layer
+num_features = model.fc.in_features
+model.fc = nn.Linear(num_features, 2)
 
-    plt.figure(figsize=(5,5))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-    plt.title("Confusion Matrix")
-    plt.xlabel("Predicted")
-    plt.ylabel("Actual")
-    plt.savefig("confusion_matrix.png")
-    mlflow.log_artifact("confusion_matrix.png")
-    plt.close()
+model = model.to(DEVICE)
 
-    # ---- Loss Curve ----
-    plt.figure()
-    plt.plot(train_losses)
-    plt.title("Training Loss Curve")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.savefig("loss_curve.png")
-    mlflow.log_artifact("loss_curve.png")
-    plt.close()
+# ----------------------------
+# 7️⃣ LOSS & OPTIMIZER
+# ----------------------------
 
-    # Save model
-    torch.save(model.state_dict(), "model.pt")
-    mlflow.log_artifact("model.pt")
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    mlflow.end_run()
+# ----------------------------
+# 8️⃣ TRAINING LOOP
+# ----------------------------
 
-if __name__ == "__main__":
-    train()
+print("🚀 Training started...")
+
+for epoch in range(EPOCHS):
+    running_loss = 0.0
+
+    for images, labels in dataloader:
+        images, labels = images.to(DEVICE), labels.to(DEVICE)
+
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+
+    print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {running_loss:.4f}")
+
+print("✅ Training completed")
+
+# ----------------------------
+# 9️⃣ SAVE MODEL
+# ----------------------------
+
+torch.save(model.state_dict(), MODEL_SAVE_PATH)
+print("💾 Model saved as", MODEL_SAVE_PATH)
