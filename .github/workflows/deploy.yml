@@ -61,7 +61,7 @@ jobs:
     # TRAIN MODEL
     # -------------------------
 
-    - - name: Train model
+    - name: Train model
       run: |
         export PYTHONPATH=$PYTHONPATH:$(pwd)
         python src/train.py
