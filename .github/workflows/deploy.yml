@@ -10,52 +10,52 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      # 1️⃣ Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.10"
+      # 2️⃣ Setup Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install kaggle
-        pip install boto3
+      # 3️⃣ Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install awscli
 
-    # ---------------- AWS CONFIG ----------------
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ap-south-1
+      # 4️⃣ Configure AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
 
-    # ---------------- DOWNLOAD FROM S3 ----------------
-    - name: Download dataset from S3
-      run: |
-        mkdir -p data/raw
-        aws s3 sync s3://cats-dogs-mlops-bucket/raw data/raw
+      # 5️⃣ Download dataset from S3
+      - name: Download dataset from S3
+        run: |
+          mkdir -p data/raw
+          aws s3 sync s3://cats-dogs-mlops-bucket/raw data/raw
 
-    # ---------------- UNZIP DATASET ----------------
-    - name: Unzip dataset
-      run: |
-        unzip data/raw/archive.zip -d data/raw
+      # 6️⃣ Debug folder structure
+      - name: Debug files in raw folder
+        run: |
+          echo "Listing data/raw contents:"
+          ls -R data/raw
 
-    # ---------------- DEBUG STRUCTURE ----------------
-    - name: Debug folder structure
-      run: |
-        echo "Listing data folder"
-        ls -R data
+      # 7️⃣ Unzip dataset
+      - name: Unzip dataset
+        run: |
+          unzip -o data/raw/*.zip -d data/raw || true
 
-    # ---------------- CLEAN DATA ----------------
-    - name: Clean corrupted images
-      run: |
-        python src/clean_data.py
+      # 8️⃣ Clean corrupted images
+      - name: Clean corrupted images
+        run: python src/clean_data.py
 
-    # ---------------- TRAIN MODEL ----------------
-    - name: Train model
-      run: |
-        python -m src.train
+      # 9️⃣ Train model
+      - name: Train model
+        run: python -m src.train
