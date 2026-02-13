@@ -1,7 +1,7 @@
 import os
 from PIL import Image
 
-data_dir = "data/raw/archive/PetImages"
+data_dir = "data/raw/PetImages"
 
 for category in ["Cat", "Dog"]:
     folder_path = os.path.join(data_dir, category)

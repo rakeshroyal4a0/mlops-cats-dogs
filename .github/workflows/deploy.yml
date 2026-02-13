@@ -1,4 +1,4 @@
-name: ML Pipeline - Cats vs Dogs
+name: MLOps Pipeline for Cats vs Dogs
 
 on:
   push:
@@ -10,45 +10,73 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install boto3 awscli
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install awscli
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1
+    # -------------------------
+    # AWS LOGIN
+    # -------------------------
 
-      - name: Create data folder
-        run: mkdir -p data/raw
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ap-south-1
 
-      - name: Download dataset from S3
-        run: |
-          aws s3 cp s3://cats-dogs-mlops-bucket/archive.zip data/raw/archive.zip
+    # -------------------------
+    # DOWNLOAD DATA FROM S3
+    # -------------------------
 
-      - name: Unzip dataset
-        run: |
-          unzip data/raw/archive.zip -d data/raw
+    - name: Download dataset from S3
+      run: |
+        mkdir -p data/raw
+        aws s3 cp s3://cats-dogs-mlops-bucket/archive.zip data/raw/archive.zip
 
-      - name: Debug folder structure
-        run: |
-          echo "Listing data/raw"
-          ls -R data/raw
+    - name: Unzip dataset
+      run: |
+        unzip data/raw/archive.zip -d data/raw/
+        echo "Dataset structure:"
+        ls -R data/raw
 
-      - name: Clean corrupted images
-        run: python src/clean_data.py
+    # -------------------------
+    # CLEAN DATA
+    # -------------------------
 
-      - name: Train model
-        run: python -m src.train
+    - name: Clean corrupted images
+      run: python src/clean_data.py
+
+    # -------------------------
+    # TRAIN MODEL
+    # -------------------------
+
+    - name: Train model
+      run: python src/train.py
+
+    # -------------------------
+    # DOCKER BUILD + PUSH
+    # -------------------------
+
+    - name: Login to Amazon ECR
+      run: |
+        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
+
+    - name: Build Docker image
+      run: docker build -t cats-dogs-app .
+
+    - name: Tag Docker image
+      run: docker tag cats-dogs-app:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/cats-dogs-app:latest
+
+    - name: Push Docker image
+      run: docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/cats-dogs-app:latest
