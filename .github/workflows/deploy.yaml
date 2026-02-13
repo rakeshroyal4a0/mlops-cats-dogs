@@ -52,3 +52,4 @@ jobs:
         run: |
           docker push \
           ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/cats-dogs-app:latest
+# trigger
