@@ -1,8 +1,7 @@
 import os
 from PIL import Image
 
-# Correct path after unzip in GitHub Actions
-data_dir = "data/raw/PetImages"
+data_dir = "data/raw/archive/PetImages"
 
 for category in ["Cat", "Dog"]:
     folder_path = os.path.join(data_dir, category)

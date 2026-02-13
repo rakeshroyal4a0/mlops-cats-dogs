@@ -2,7 +2,7 @@ import os
 from torchvision import datasets, transforms
 from torch.utils.data import random_split, DataLoader
 
-DATA_DIR = "data/raw/PetImages"
+DATA_DIR = "data/raw/archive/PetImages"
 BATCH_SIZE = 32
 IMAGE_SIZE = 224
 
